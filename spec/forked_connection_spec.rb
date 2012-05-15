@@ -77,8 +77,6 @@ unless defined?(::JRUBY_VERSION)
 
       logger.debug { "------------------->   FORK   <---------------------------" }
 
-      @zk.pause
-
       @pid = fork do
         logger.debug { "reopening connection in child: #{$$}" }
         @zk.reopen

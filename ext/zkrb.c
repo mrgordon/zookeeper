@@ -200,6 +200,17 @@ static void hexbufify(char *dest, const char *src, int len) {
   }
 }
 
+inline static int we_are_forked(zkrb_instance_data_t *zk) {
+  int rv=0;
+
+  if ((!!zk) && (zk->orig_pid != getpid())) {
+    rv=1;
+  }
+
+  return rv;
+}
+
+
 static int destroy_zkrb_instance(zkrb_instance_data_t* zk) {
   int rv = ZOK;
 
@@ -210,7 +221,7 @@ static int destroy_zkrb_instance(zkrb_instance_data_t* zk) {
     /* Note that after zookeeper_close() returns, ZK handle is invalid */
     zkrb_debug("obj_id: %lx, calling zookeeper_close", zk->object_id);
 
-    if (zk->orig_pid != getpid()) {
+    if (we_are_forked(zk)) {
       zkrb_debug("FORK DETECTED! orig_pid: %d, current pid: %d, "
           "using socket-closing hack before zookeeper_close", zk->orig_pid, getpid());
 
@@ -281,7 +292,7 @@ static VALUE method_zkrb_init(int argc, VALUE* argv, VALUE self) {
     zoo_set_debug_level(0); // no log messages
   } else {
     Check_Type(log_level, T_FIXNUM);
-    zoo_set_debug_level((int)log_level);
+    zoo_set_debug_level(FIX2INT(log_level));
   }
 
   VALUE data;
@@ -302,12 +313,12 @@ static VALUE method_zkrb_init(int argc, VALUE* argv, VALUE self) {
 
   zk_local_ctx->zh =
       zookeeper_init(
-          RSTRING_PTR(hostPort),
-          zkrb_state_callback,
-          session_timeout_msec(self),
-          &zk_local_ctx->myid,
-          ctx,
-          0);
+          RSTRING_PTR(hostPort),        // const char *host
+          zkrb_state_callback,          // watcher_fn
+          session_timeout_msec(self),   // recv_timeout
+          &zk_local_ctx->myid,          // cilentid_t
+          ctx,                          // void *context
+          0);                           // flags
 
   zkrb_debug("method_zkrb_init, zk_local_ctx: %p, zh: %p, queue: %p, calling_ctx: %p",
       zk_local_ctx, zk_local_ctx->zh, zk_local_ctx->queue, ctx);
