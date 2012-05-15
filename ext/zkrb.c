@@ -189,12 +189,11 @@ static int destroy_zkrb_instance(zkrb_instance_data_t* zk) {
 
       int fd = ((int *)zk->zh)[0];  // nasty, brutish, and wonderfully effective hack (see above)
       close(fd);
-
     }
 
     rv = zookeeper_close(zk->zh);
 
-    zkrb_debug("obj_id: %lx, zookeeper_close returned %d", zk->object_id, rv); 
+    zkrb_debug("obj_id: %lx, zookeeper_close returned %d, calling context: %p", zk->object_id, rv, ctx); 
     zkrb_calling_context_free((zkrb_calling_context *) ctx);
   }
 
@@ -228,7 +227,7 @@ static void print_zkrb_instance_data(zkrb_instance_data_t* ptr) {
 
 inline static void zkrb_debug_clientid_t(const clientid_t *cid) {
   int pass_len = sizeof(cid->passwd);
-  int hex_len = 2 * pass_len;
+  int hex_len = 2 * pass_len + 1;
   char buf[hex_len];
   hexbufify(buf, cid->passwd, pass_len);
 
@@ -478,7 +477,11 @@ static VALUE method_get(VALUE self, VALUE reqid, VALUE path, VALUE async, VALUE 
   int data_len = MAX_ZNODE_SIZE;
   struct Stat stat;
 
-  char * data = malloc(MAX_ZNODE_SIZE); /* ugh */
+  char * data = NULL; 
+  if (IS_SYNC(call_type)) {
+    data = malloc(MAX_ZNODE_SIZE); /* ugh */
+    memset(data, 0, sizeof(data));
+  }
 
   int rc;
 
@@ -816,9 +819,9 @@ static VALUE method_close_handle(VALUE self) {
   FETCH_DATA_PTR(self, zk);
 
   if (ZKRBDebugging) {
+  }
     zkrb_debug_inst(self, "CLOSING_ZK_INSTANCE");
     print_zkrb_instance_data(zk);
-  }
   
   // this is a value on the ruby side we can check to see if destroy_zkrb_instance
   // has been called

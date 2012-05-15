@@ -69,17 +69,6 @@ void atfork_child() {
 // and children
 /*pthread_atfork(atfork_prepare, atfork_parent, atfork_child);*/
 
-// delegates to the system malloc (we can't use xmalloc in the threaded case,
-// as we can't touch the interpreter)
-
-inline static void* zk_malloc(size_t size) {
-  return malloc(size);
-}
-
-inline static void zk_free(void *ptr) {
-  free(ptr);
-}
-
 #else
 
 inline static int global_mutex_lock() {
@@ -89,21 +78,32 @@ inline static int global_mutex_lock() {
 inline static int global_mutex_unlock() {
   return 0;
 }
+#endif /* THREADED */
+
+
+#ifndef THREADED
+#define USE_XMALLOC
+#endif
 
 // we can use the ruby xmalloc/xfree that will raise errors
 // in the case of a failure to allocate memory, and can cycle
 // the garbage collector in some cases.
 
 inline static void* zk_malloc(size_t size) {
+#ifdef USE_XMALLOC
   return xmalloc(size);
+#else
+  return malloc(size);
+#endif
 }
 
 inline static void zk_free(void *ptr) {
+#ifdef USE_XMALLOC
   xfree(ptr);
+#else
+  free(ptr);
+#endif
 }
-
-
-#endif /* THREADED */
 
 
 void zkrb_enqueue(zkrb_queue_t *q, zkrb_event_t *elt) {
