@@ -453,7 +453,7 @@ static VALUE method_create(VALUE self, VALUE reqid, VALUE path, VALUE data, VALU
 
   int invalid_call_type=0;
 
-  int rc;
+  int rc=ZOK;
   switch (call_type) {
 
 #ifdef THREADED
@@ -832,7 +832,10 @@ static VALUE method_zkrb_iterate_event_loop(VALUE self) {
     if (FD_ISSET(pipe_r_fd, &rfds)) {
       // flush the pipe (from mt_adaptor.c)
       char b[1];
-      read(pipe_r_fd, b, 1); // one event has awoken us, so we clear one event from the pipe
+       // one event has awoken us, so we clear one event from the pipe
+      if (read(pipe_r_fd, b, 1) < 0) {
+        rb_raise(rb_eRuntimeError, "read from pipe failed: %s", clean_errno());
+      }
     }
 
     rc = zookeeper_process(zk->zh, events);
@@ -858,7 +861,7 @@ static VALUE method_has_events(VALUE self) {
 
 static VALUE method_zoo_set_log_level(VALUE self, VALUE level) {
   Check_Type(level, T_FIXNUM);
-  zoo_set_debug_level((int)level);
+  zoo_set_debug_level(FIX2INT(level));
   return Qnil;
 }
 
