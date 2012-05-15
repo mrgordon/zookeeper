@@ -81,9 +81,9 @@ inline static int global_mutex_unlock() {
 #endif /* THREADED */
 
 
-#ifndef THREADED
-#define USE_XMALLOC
-#endif
+// #ifndef THREADED
+// #define USE_XMALLOC
+// #endif
 
 // we can use the ruby xmalloc/xfree that will raise errors
 // in the case of a failure to allocate memory, and can cycle
